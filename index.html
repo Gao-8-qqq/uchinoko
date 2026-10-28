@@ -273,6 +273,14 @@ const { useState, useEffect, useCallback } = React;
 const SUPABASE_URL = 'https://xqnhxjepxzglmsnmdrvm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FRoeyOoJFYtM7QsQ8cjuqw_2yqFF7bj';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ゲストは「受け取る」「流す」を押したときに初めて作る（開いただけでは作らない）
+async function ensureGuest() {
+  const { data } = await sb.auth.getSession();
+  if (data.session) return;
+  const res = await sb.auth.signInAnonymously();
+  if (res.error) throw new Error('ゲストで始められなかった…（' + res.error.message + '）');
+}
 const REDIRECT_TO = location.origin + location.pathname;
 
 const STAMPS = [
@@ -313,6 +321,7 @@ function isHttpsUrl(raw) {
 
 async function fetchMeta(url) {
   try {
+    await ensureGuest();
     const { data, error } = await sb.functions.invoke('track-info', { body: { url } });
     if (!error && data) return { title: data.title || '', artist: data.artist || '', thumbnail: data.thumbnail || '' };
   } catch (e) { /* 手入力でOK */ }
@@ -453,6 +462,7 @@ function ReceiveTab({ genres, toast, goCreate }) {
     if (!genre) return;
     setBusy(true); setNone(false);
     try {
+      await ensureGuest();
       const { data, error } = await sb.rpc('receive_oc_post', { p_genre_id: genre.id, p_tags: tags });
       if (error) throw error;
       if (!data) { setNone(true); return; }
@@ -615,7 +625,7 @@ function CreateTab({ user, genres, toast, onCreated, openLogin, guestCanCreate }
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (!user || (user.is_anonymous && !guestCanCreate)) {
+  if (user ? (user.is_anonymous && !guestCanCreate) : !guestCanCreate) {
     return (
       <div>
         <h2 className="page display">うちの子を流す</h2>
@@ -656,6 +666,7 @@ function CreateTab({ user, genres, toast, onCreated, openLogin, guestCanCreate }
         author_name: authorName, work_url: workUrl.trim(), author_url: authorUrl.trim(),
         tracks: filled.map(t => ({ url: t.url.trim(), service: detectService(t.url), title: t.title.trim() || null, artist: t.artist.trim() || null, thumbnail: t.thumbnail || null })),
       };
+      await ensureGuest();
       const { error } = await sb.rpc('create_oc_post', { p });
       if (error) throw error;
       toast('うちの子を流したよ。誰かに届きますように');
@@ -671,7 +682,7 @@ function CreateTab({ user, genres, toast, onCreated, openLogin, guestCanCreate }
   return (
     <div>
       <h2 className="page display">うちの子を流す</h2>
-      {user.is_anonymous && (
+      {(!user || user.is_anonymous) && (
         <p className="hint">
           ゲストのままでも流せるよ。ただ、ゲストで流した投稿はこのブラウザでしか見返せないから、
           残したいなら<button className="linkish" style={{ padding: 0 }} onClick={openLogin}>ログイン</button>がおすすめ。
@@ -938,16 +949,11 @@ function App() {
 
   useEffect(() => {
     let alive = true;
-    const ensureUser = async () => {
-      const { data } = await sb.auth.getSession();
-      if (data.session) { if (alive) setUser(data.session.user); return; }
-      const res = await sb.auth.signInAnonymously();
-      if (res.error) { if (alive) { setFatal('ゲストで始められなかった…（' + res.error.message + '）'); setUser(null); } return; }
-      if (alive) setUser(res.data.user);
-    };
-    ensureUser();
+    sb.auth.getSession().then(({ data }) => {
+      if (alive) setUser(data.session ? data.session.user : null);
+    });
     const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') { ensureUser(); return; }
+      if (event === 'SIGNED_OUT') { setUser(null); return; }
       if (session) setUser(session.user);
       if (event === 'SIGNED_IN' && session && !session.user.is_anonymous) setLoginOpen(false);
     });
