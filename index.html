@@ -692,7 +692,7 @@ function CreateTab({ user, genres, toast, onCreated, openLogin, guestCanCreate }
       <label className="field" htmlFor="oc-intro">ひとこと紹介<span className="opt">任意・200字まで</span></label>
       <textarea id="oc-intro" className="input genkou-in" maxLength={200} value={intro} onChange={e => setIntro(e.target.value)}
                 placeholder={kind === 'chara' ? 'どんな子？ 好きなもの、抱えているもの、口ぐせなど' : 'どんなお話？ あらすじや見どころなど'} />
-      <p className="hint">{intro.length} / 200</p>
+      <p className="hint">{intro.length} / 200　歌詞は書き写さないでね</p>
 
       <label className="field">ジャンル</label>
       <div className="genres small">
@@ -910,8 +910,13 @@ function Rules({ onClose }) {
         <li>イメソンは、作者さんが自分の解釈で選んだもの。楽曲・アーティストさんとは関係がなく、公式なものではありません</li>
         <li>曲やアーティストさんをおとしめる目的で使ったり、アーティストさんご本人やその公式の場所（SNSのリプライ・コメント欄など）に投稿を送りつけたりしないでね</li>
         <li>作品・作者リンクは、自分のページだけにしてね</li>
+        <li>歌詞は著作物なので、ひとことや紹介文に歌詞を書き写さないでね（曲名やアーティスト名の紹介はOK）</li>
         <li>きまりに反する投稿は、運営が予告なく非表示・削除することがあります</li>
       </ul>
+      <p style={{ fontSize: 13 }}>
+        <b>権利者の方へ</b>：掲載内容に権利上の問題がある場合は、
+        <a href="mailto:qx042039711@gmail.com">qx042039711@gmail.com</a> までご連絡ください。確認のうえ、速やかに非表示・削除などの対応をします。
+      </p>
       <button className="btn ghost" onClick={onClose}>閉じる</button>
     </Sheet>
   );
