@@ -79,11 +79,6 @@
     position: relative;
   }
   .hero .tate span { background: var(--paper); padding: 10px 6px; border: 2px solid var(--ink); }
-  .hero .tate .bubble-tail {
-    position: absolute; left: -14px; bottom: 26px; width: 16px; height: 16px;
-    background: var(--paper); border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
-    transform: skewY(-28deg);
-  }
 
   .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin: 30px 0 10px; }
   .sec-head h3 { margin: 0; font-size: 18px; }
@@ -550,7 +545,6 @@ function ReceiveTab({ genres, toast, goCreate }) {
           <button className="btn ghost" onClick={goCreate}>うちの子を流す</button>
         </div>
         <div className="tate" aria-hidden="true">
-          <span className="bubble-tail"></span>
           <span>うちの子に、主題歌を。</span>
         </div>
       </section>
