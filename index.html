@@ -1,0 +1,1003 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>うちの子イメソン便</title>
+<meta name="description" content="うちの子と、その子のイメソンを流そう。ジャンルを選ぶと、誰かのうちの子が届く。">
+<meta name="theme-color" content="#fcfcfa">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Shippori+Mincho+B1:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  /* =====================================================
+     うちの子イメソン便 ── 小説 × 漫画
+     紙とスミ、コマ割りの太枠、スクリーントーン、差し色は朱だけ
+     ===================================================== */
+  :root {
+    --paper: #fcfcfa;
+    --paper-2: #f3f3f0;
+    --ink: #121317;
+    --ink-2: #34363c;
+    --muted: #6e7078;
+    --rule: #d8dbe0;
+    --shu: #d93a2b;
+    --shu-soft: #fbe9e6;
+    --ok: #1d7a4f;
+    --frame: 3px solid var(--ink);
+    --tone: radial-gradient(var(--ink) 0.9px, transparent 1.15px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 15.5px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  a { color: var(--ink); }
+  :focus-visible { outline: 3px solid var(--shu); outline-offset: 2px; }
+
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 0 16px calc(104px + env(safe-area-inset-bottom)); }
+
+  .display { font-family: "Dela Gothic One", sans-serif; font-weight: 400; letter-spacing: .02em; line-height: 1.3; }
+
+  /* ---- ヘッダー ---- */
+  header.top { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 20px 0 14px; border-bottom: var(--frame); }
+  .logo { line-height: 1.15; }
+  .logo h1 { margin: 0; font-size: 23px; }
+  .logo .sub { display: block; font-size: 11px; color: var(--muted); letter-spacing: .12em; margin-top: 4px; }
+  .who { font-size: 12px; background: var(--paper); border: 2px solid var(--ink); border-radius: 0; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+  .who:hover { background: var(--ink); color: var(--paper); }
+
+  /* ---- コマ ---- */
+  .panel { border: var(--frame); background: var(--paper); position: relative; }
+  .panel + .panel { margin-top: 14px; }
+
+  /* ヒーロー：左に縦書きの台詞、右にトーン貼りのコマ */
+  .hero { display: grid; grid-template-columns: 1fr 112px; margin-top: 18px; }
+  .hero .story { padding: 18px 16px; border-right: var(--frame); }
+  .hero h2 { margin: 0 0 10px; font-size: 22px; }
+  .hero p { margin: 0 0 16px; font-size: 14px; color: var(--ink-2); }
+  .hero .tate {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    font-weight: 800;
+    font-size: 21px;
+    letter-spacing: .14em;
+    padding: 14px 0;
+    display: flex; align-items: center; justify-content: center;
+    background-image: var(--tone); background-size: 6px 6px; background-color: var(--paper);
+    position: relative;
+  }
+  .hero .tate span { background: var(--paper); padding: 10px 6px; border: 2px solid var(--ink); }
+  .hero .tate .bubble-tail {
+    position: absolute; left: -14px; bottom: 26px; width: 16px; height: 16px;
+    background: var(--paper); border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink);
+    transform: skewY(-28deg);
+  }
+
+  .sec-head { display: flex; align-items: baseline; justify-content: space-between; margin: 30px 0 10px; }
+  .sec-head h3 { margin: 0; font-size: 18px; }
+  .sec-head .note { font-size: 12px; color: var(--muted); }
+  .lead { color: var(--ink-2); font-size: 14px; margin: 0 0 12px; }
+
+  /* ---- ジャンル（コマ割り） ---- */
+  .genres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; border: var(--frame); padding: 6px; background: var(--ink); }
+  .genre {
+    background: var(--paper); border: 0; padding: 14px 6px; min-height: 64px; cursor: pointer;
+    font-family: "Dela Gothic One", sans-serif; font-size: 13.5px; line-height: 1.35;
+    display: grid; place-items: center; text-align: center; position: relative;
+    transition: background .12s, color .12s;
+  }
+  .genre:nth-child(5n+1) { grid-column: span 2; }
+  .genre:hover { background-image: var(--tone); background-size: 5px 5px; }
+  .genre:hover span { background: var(--paper); padding: 0 4px; }
+  .genre.on { background: var(--ink); color: var(--paper); }
+  .genre.on span { background: transparent; }
+  .genre.on::after {
+    content: "選"; position: absolute; top: 4px; right: 5px;
+    width: 20px; height: 20px; border-radius: 50%; background: var(--shu); color: #fff;
+    font-family: "Shippori Mincho B1", serif; font-weight: 800; font-size: 11px; line-height: 20px; text-align: center;
+  }
+  .genre:disabled { opacity: .5; cursor: default; }
+
+  /* ---- 詳細タグ ---- */
+  details.more { margin-top: 12px; border: 2px solid var(--ink); background: var(--paper); }
+  details.more summary { cursor: pointer; padding: 10px 12px; font-weight: 600; list-style: none; display: flex; justify-content: space-between; }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::after { content: "＋"; font-weight: 800; }
+  details.more[open] summary::after { content: "－"; }
+  details.more .inner { padding: 0 12px 12px; }
+  .tag-group { margin-top: 8px; }
+  .tag-group .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1.5px solid var(--ink); background: var(--paper); border-radius: 999px; padding: 3px 12px; cursor: pointer; font-size: 13px; }
+  .chip:hover { background: var(--paper-2); }
+  .chip.on { background: var(--ink); color: var(--paper); }
+  .chip.static { cursor: default; }
+
+  .receive-bar {
+    position: sticky; bottom: calc(78px + env(safe-area-inset-bottom));
+    margin-top: 14px; padding: 10px 0;
+    background: linear-gradient(180deg, transparent, var(--paper) 30%);
+    z-index: 5;
+  }
+
+  /* ---- ボタン ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+    padding: 14px 16px; border: var(--frame); background: var(--ink); color: var(--paper);
+    font-family: "Dela Gothic One", sans-serif; font-size: 15px; letter-spacing: .04em; cursor: pointer;
+    box-shadow: 4px 4px 0 var(--shu);
+    transition: transform .08s, box-shadow .08s;
+  }
+  .btn:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--shu); }
+  .btn:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--shu); }
+  .btn:disabled { background: var(--paper-2); color: var(--muted); border-color: var(--rule); box-shadow: none; cursor: default; }
+  .btn.ghost { background: var(--paper); color: var(--ink); box-shadow: none; font-family: "Shippori Mincho B1", serif; font-weight: 600; }
+  .btn.ghost:hover:not(:disabled) { background: var(--paper-2); transform: none; box-shadow: none; }
+  .btn.small { width: auto; padding: 6px 12px; font-size: 13px; border-width: 2px; }
+  .btn.danger { background: var(--paper); color: var(--shu); border-color: var(--shu); box-shadow: none; font-family: "Shippori Mincho B1", serif; font-weight: 600; }
+  .btn.social { background: #fff; color: #1f1f1f; box-shadow: none; font-family: system-ui, sans-serif; font-weight: 600; font-size: 14px; }
+  .btn.social svg { width: 18px; height: 18px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .linkish { background: none; border: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 4px 6px; text-decoration: underline; text-underline-offset: 3px; }
+  .linkish:hover { color: var(--ink); }
+
+  /* ---- 届いた「うちの子」 ---- */
+  .profile { margin-top: 18px; }
+  .profile .head { padding: 16px; border-bottom: var(--frame); position: relative; background-image: var(--tone); background-size: 6px 6px; }
+  .profile .head .card { background: var(--paper); border: 2px solid var(--ink); padding: 12px 14px; }
+  .profile .from { font-size: 12px; color: var(--muted); margin: 0 0 2px; }
+  .profile .name { font-size: 28px; margin: 0; word-break: break-word; }
+  .profile .meta { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .hanko {
+    position: absolute; top: 8px; right: 10px; width: 52px; height: 52px; border-radius: 50%;
+    border: 2.5px solid var(--shu); color: var(--shu); background: var(--paper);
+    display: grid; place-items: center; font-weight: 800; font-size: 13px; line-height: 1.1; text-align: center;
+    transform: rotate(-12deg);
+  }
+  .genkou {
+    margin: 0; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; font-size: 15px; line-height: 2;
+    background-image: repeating-linear-gradient(transparent, transparent calc(2em - 1px), var(--rule) calc(2em - 1px), var(--rule) 2em);
+    background-position: 0 14px;
+    border-bottom: var(--frame);
+  }
+  .credit { padding: 10px 16px; border-bottom: var(--frame); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .credit .by { margin-right: auto; font-weight: 600; }
+  .credit a.lnk { border: 2px solid var(--ink); padding: 3px 10px; font-size: 13px; text-decoration: none; font-weight: 600; }
+  .credit a.lnk:hover { background: var(--ink); color: var(--paper); }
+
+  .songs-title { padding: 10px 16px 0; font-size: 14px; }
+  .tracklist { list-style: none; margin: 0; padding: 0 16px 6px; }
+  .tracklist li + li { border-top: 1px dashed var(--rule); }
+  .trow { display: flex; align-items: center; gap: 12px; padding: 12px 0; text-decoration: none; color: var(--ink); }
+  .tno { font-weight: 800; color: var(--shu); width: 26px; flex: none; font-size: 17px; }
+  .tthumb { width: 44px; height: 44px; object-fit: cover; flex: none; border: 1.5px solid var(--ink); }
+  .trow .m { min-width: 0; flex: 1; }
+  .trow .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trow .a { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trow .s { font-size: 11px; color: var(--muted); }
+  .play { width: 32px; height: 32px; flex: none; border: 2px solid var(--ink); border-radius: 50%; display: grid; place-items: center; }
+  .play svg { width: 11px; height: 11px; margin-left: 2px; }
+  .trow:hover .play { background: var(--ink); color: var(--paper); }
+
+  .disclaimer { margin: 0 16px 12px; padding: 8px 10px; border-left: 3px solid var(--ink); background: var(--paper-2); font-size: 12px; line-height: 1.7; color: var(--ink-2); }
+  .react { padding: 14px 16px 16px; border-top: var(--frame); background: var(--paper-2); }
+  .react p { margin: 0 0 8px; font-weight: 600; font-size: 14px; }
+  .stamps { display: flex; flex-wrap: wrap; gap: 8px; }
+  .stamp { border: 2px solid var(--ink); background: var(--paper); padding: 4px 12px; cursor: pointer; font-size: 14px; font-weight: 600; border-radius: 4px; }
+  .stamp:hover:not(:disabled) { background: var(--shu-soft); }
+  .stamp.on { background: var(--shu); border-color: var(--shu); color: #fff; transform: rotate(-3deg); }
+  .stamp:disabled:not(.on) { opacity: .4; cursor: default; }
+
+  /* ---- 入力 ---- */
+  h2.page { font-size: 21px; margin: 22px 0 6px; }
+  label.field { display: block; font-size: 13px; font-weight: 600; margin: 18px 0 6px; }
+  label.field .opt { font-weight: 400; color: var(--muted); margin-left: 6px; }
+  .input { width: 100%; background: var(--paper); border: 2px solid var(--ink); border-radius: 0; padding: 10px 12px; outline: none; }
+  .input:focus { border-color: var(--shu); }
+  .input::placeholder { color: #a3a5ab; }
+  textarea.input.genkou-in {
+    min-height: 128px; resize: vertical; line-height: 2; padding: 6px 12px;
+    background-image: repeating-linear-gradient(transparent, transparent calc(2em - 1px), var(--rule) calc(2em - 1px), var(--rule) 2em);
+    background-attachment: local; background-position: 0 6px;
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .hint.err { color: var(--shu); }
+  .hint.ok { color: var(--ok); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: var(--frame); }
+  .seg button { border: 0; background: var(--paper); padding: 10px; cursor: pointer; font-weight: 600; }
+  .seg button + button { border-left: var(--frame); }
+  .seg button.on { background: var(--ink); color: var(--paper); }
+  .genres.small .genre { min-height: 46px; padding: 8px 4px; font-size: 12.5px; }
+
+  .trackrow { border: 2px solid var(--ink); padding: 10px; margin-bottom: 8px; background: var(--paper); }
+  .trackrow .num { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 6px; }
+  .meta-row { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+  .meta-row .tthumb { width: 56px; height: 56px; }
+  .meta-inputs { flex: 1; min-width: 0; display: grid; gap: 6px; }
+
+  /* ---- じぶん ---- */
+  .mine { padding: 14px; }
+  .mine-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .mine .name { font-size: 18px; margin: 4px 0; }
+  .counts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .count { font-size: 12px; border: 1.5px solid var(--ink); padding: 1px 8px; }
+  .count b { color: var(--shu); margin-left: 4px; }
+  .toggle { background: none; border: 2px solid var(--ink); padding: 3px 12px; font-size: 13px; cursor: pointer; margin-top: 10px; font-weight: 600; }
+  .empty { text-align: center; color: var(--muted); padding: 26px 14px; }
+  .note-box { border: 2px dashed var(--ink); padding: 12px 14px; font-size: 14px; }
+
+  /* ---- 下のタブ ---- */
+  nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; background: var(--paper); border-top: var(--frame); padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
+  nav.tabs .inner { max-width: 480px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+  nav.tabs button { background: none; border: 0; padding: 10px 0 12px; cursor: pointer; font-size: 12px; font-weight: 600; display: grid; justify-items: center; gap: 2px; color: var(--muted); }
+  nav.tabs button + button { border-left: 2px solid var(--ink); }
+  nav.tabs .ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  nav.tabs button.on { color: var(--ink); background-image: var(--tone); background-size: 5px 5px; }
+  nav.tabs button.on span.lb { background: var(--paper); padding: 0 4px; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--paper); border: var(--frame); box-shadow: 4px 4px 0 var(--ink); padding: 10px 16px; font-size: 14px; font-weight: 600; z-index: 30; max-width: calc(100% - 32px); }
+  .overlay { position: fixed; inset: 0; background: rgba(18, 19, 23, .45); display: grid; place-items: end center; z-index: 20; }
+  .sheet { background: var(--paper); border: var(--frame); border-bottom: 0; width: 100%; max-width: 480px; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); max-height: 86vh; overflow: auto; }
+  .sheet h3 { margin: 0 0 8px; font-family: "Dela Gothic One", sans-serif; font-weight: 400; font-size: 18px; }
+  .sheet p { color: var(--ink-2); font-size: 14px; margin: 0 0 14px; }
+  .sheet ul { font-size: 14px; padding-left: 20px; color: var(--ink-2); }
+  .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; margin: 16px 0 10px; }
+  .or::before, .or::after { content: ""; flex: 1; height: 2px; background: var(--ink); }
+  .loading { text-align: center; color: var(--muted); padding: 60px 0; }
+  footer.foot { text-align: center; margin-top: 30px; }
+  .sister { display: block; margin-top: 26px; border: 2px solid var(--ink); padding: 12px 14px; text-decoration: none; font-size: 14px; }
+  .sister b { font-family: "Dela Gothic One", sans-serif; font-weight: 400; }
+  .sister:hover { background: var(--paper-2); }
+</style>
+</head>
+<body>
+<div id="root"><div class="loading">読み込み中…</div></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback } = React;
+
+// ===== 設定（音届便と同じSupabase） =====
+const SUPABASE_URL = 'https://xqnhxjepxzglmsnmdrvm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_FRoeyOoJFYtM7QsQ8cjuqw_2yqFF7bj';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const REDIRECT_TO = location.origin + location.pathname;
+const OTODOKEBIN_URL = 'https://otodokebin.com/';
+
+const STAMPS = [
+  { id: 'sasatta',  label: '刺さった' },
+  { id: 'suki',     label: '好き' },
+  { id: 'naita',    label: '泣いた' },
+  { id: 'kaishaku', label: '解釈一致' },
+  { id: 'oseru',    label: '推せる' },
+  { id: 'kininaru', label: '気になる' },
+];
+const TAG_GROUPS = [
+  { label: '雰囲気',         tags: ['切ない', '熱い', '明るい', '重い', '静か', '不穏'] },
+  { label: 'キャラの立ち位置', tags: ['主人公', 'ヒロイン・ヒーロー', '相棒', '敵役', '師匠', '家族'] },
+  { label: '作品の形',       tags: ['漫画', '小説', 'イラスト', 'ゲーム', 'TRPG'] },
+];
+const SERVICES = { youtube: 'YouTube', spotify: 'Spotify', apple_music: 'Apple Music', amazon_music: 'Amazon Music' };
+const KIND_LABEL = { chara: 'キャラ', work: '作品' };
+
+// ===== 便利関数 =====
+function detectService(raw) {
+  try {
+    const u = new URL(raw.trim());
+    if (u.protocol !== 'https:') return null;
+    const h = u.hostname.replace(/^www\./, '').replace(/^m\./, '');
+    if (h === 'youtu.be' || h === 'youtube.com' || h === 'music.youtube.com') return 'youtube';
+    if (h === 'open.spotify.com' || h === 'spotify.link') return 'spotify';
+    if (h === 'music.apple.com') return 'apple_music';
+    if (h.startsWith('music.amazon.')) return 'amazon_music';
+    if (h.startsWith('amazon.') && u.pathname.includes('/music')) return 'amazon_music';
+  } catch (e) { /* URLじゃない */ }
+  return null;
+}
+
+function isHttpsUrl(raw) {
+  if (!raw.trim()) return true;
+  try { const u = new URL(raw.trim()); return u.protocol === 'https:'; } catch (e) { return false; }
+}
+
+async function fetchMeta(url) {
+  try {
+    const { data, error } = await sb.functions.invoke('track-info', { body: { url } });
+    if (!error && data) return { title: data.title || '', artist: data.artist || '', thumbnail: data.thumbnail || '' };
+  } catch (e) { /* 手入力でOK */ }
+  return {};
+}
+
+function errMsg(e) {
+  const m = (e && (e.message || e.details)) || String(e);
+  if (m.includes('daily_limit_reached')) return '今日の受け取りはここまで。また明日届くよ。';
+  if (m.includes('login_required')) return 'この機能はログインが必要だよ。';
+  if (m.includes('tracks_must_be_1_to_10')) return 'イメソンは1〜10曲で入れてね。';
+  if (m.includes('create_limit_reached')) return '今日流せるのはここまで。また明日ね。';
+  if (m.includes('oc_posts_name_check')) return '名前は60字以内で入れてね。';
+  if (m.includes('url_check')) return 'リンクは https:// から始まるものを入れてね。';
+  if (m.includes('duplicate key')) return 'もう送信済みだよ。';
+  return 'うまくいかなかった…（' + m + '）';
+}
+
+// ===== 小さな部品 =====
+function Toast({ text }) {
+  if (!text) return null;
+  return <div className="toast" role="status">{text}</div>;
+}
+
+function Sheet({ onClose, children }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()}>{children}</div>
+    </div>
+  );
+}
+
+function Confirm({ title, body, okLabel, onOk, onCancel }) {
+  return (
+    <Sheet onClose={onCancel}>
+      <h3>{title}</h3>
+      {body && <p>{body}</p>}
+      <div className="row">
+        <button className="btn ghost" onClick={onCancel}>やめる</button>
+        <button className="btn danger" onClick={onOk}>{okLabel}</button>
+      </div>
+    </Sheet>
+  );
+}
+
+function TrackItem({ t, i }) {
+  return (
+    <li>
+      <a className="trow" href={t.url} target="_blank" rel="noopener noreferrer">
+        <span className="tno">{i + 1}</span>
+        {t.thumbnail && <img className="tthumb" src={t.thumbnail} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+        <span className="m">
+          <div className="t">{t.title || (SERVICES[t.service] + ' の曲')}</div>
+          {t.artist && <div className="a">{t.artist}</div>}
+          <div className="s">{SERVICES[t.service]} で聴く</div>
+        </span>
+        <span className="play" aria-hidden="true">
+          <svg viewBox="0 0 12 12"><path d="M2 1.2v9.6L10.6 6z" fill="currentColor"/></svg>
+        </span>
+      </a>
+    </li>
+  );
+}
+
+function SafeLink({ href, children }) {
+  if (!href || !/^https:\/\//i.test(href)) return null;
+  return <a className="lnk" href={href} target="_blank" rel="noopener noreferrer nofollow ugc">{children}</a>;
+}
+
+// ===== ログイン =====
+function LoginForm({ user, toast }) {
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!email.includes('@')) return toast('メールアドレスを入れてね');
+    setBusy(true);
+    try {
+      if (user && user.is_anonymous) {
+        const { error } = await sb.auth.updateUser({ email }, { emailRedirectTo: REDIRECT_TO });
+        if (!error) { setSent(true); return; }
+        if (!/already|exists|registered/i.test(error.message)) throw error;
+      }
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: REDIRECT_TO } });
+      if (error) throw error;
+      setSent(true);
+    } catch (err) {
+      toast(errMsg(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const google = async () => {
+    setBusy(true);
+    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: REDIRECT_TO } });
+    if (error) { setBusy(false); toast(errMsg(error)); }
+  };
+
+  if (sent) return <p className="hint ok">メールを送ったよ。届いたリンクを開くとログインできる。</p>;
+  return (
+    <div>
+      <button className="btn social" onClick={google} disabled={busy}>
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <path d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z" fill="#34A853"/>
+          <path d="M3.97 10.72A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z" fill="#FBBC05"/>
+          <path d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z" fill="#EA4335"/>
+        </svg>
+        Googleでログイン
+      </button>
+      <div className="or"><span>またはメールで</span></div>
+      <form onSubmit={submit}>
+        <input className="input" type="email" autoComplete="email" value={email} aria-label="メールアドレス"
+               onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
+        <p className="hint">パスワードはいらないよ。届いたリンクを開くだけ。音届便と同じアカウントが使えるよ。</p>
+        <button className="btn ghost" disabled={busy} style={{ marginTop: 10 }}>{busy ? '送信中…' : 'ログインリンクを送る'}</button>
+      </form>
+    </div>
+  );
+}
+
+// ===== 受け取る =====
+function ReceiveTab({ genres, toast, goCreate }) {
+  const [genre, setGenre] = useState(null);
+  const [tags, setTags] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [got, setGot] = useState(null);
+  const [none, setNone] = useState(false);
+  const [stamp, setStamp] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+
+  const toggleTag = (t) => setTags(ts => ts.includes(t) ? ts.filter(x => x !== t) : [...ts, t]);
+
+  const receive = async () => {
+    if (!genre) return;
+    setBusy(true); setNone(false);
+    try {
+      const { data, error } = await sb.rpc('receive_oc_post', { p_genre_id: genre.id, p_tags: tags });
+      if (error) throw error;
+      if (!data) { setNone(true); return; }
+      setGot(data); setStamp(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      toast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sendStamp = async (id) => {
+    if (stamp) return;
+    setStamp(id);
+    const { error } = await sb.from('oc_reactions').insert({ delivery_id: got.delivery_id, post_id: got.post_id, stamp: id });
+    if (error) { setStamp(null); toast(errMsg(error)); return; }
+    toast('作者さんにこっそり届けたよ');
+  };
+
+  const report = async () => {
+    setConfirm(null);
+    const { error } = await sb.from('reports').insert({ target_type: 'oc_post', target_id: got.post_id });
+    if (error) return toast(errMsg(error));
+    toast('通報したよ。ありがとう');
+  };
+
+  const block = async () => {
+    setConfirm(null);
+    const { error } = await sb.rpc('block_oc_author', { p_delivery_id: got.delivery_id });
+    if (error) return toast(errMsg(error));
+    toast('この作者さんの投稿はもう届かないよ');
+    setGot(null);
+  };
+
+  if (got) {
+    return (
+      <div>
+        <article className="panel profile">
+          <div className="head">
+            <div className="card">
+              <p className="from">{got.genre}のうちの子が届いたよ</p>
+              <h2 className="name display">{got.name}</h2>
+              {got.tags && got.tags.length > 0 && (
+                <div className="meta">{got.tags.map(t => <span key={t} className="chip static">{t}</span>)}</div>
+              )}
+            </div>
+            <div className="hanko" aria-label={KIND_LABEL[got.kind]}>{KIND_LABEL[got.kind]}</div>
+          </div>
+          {got.intro && <p className="genkou">{got.intro}</p>}
+          {(got.author_name || got.work_url || got.author_url) && (
+            <div className="credit">
+              <span className="by">{got.author_name ? '作・' + got.author_name : ''}</span>
+              <SafeLink href={got.work_url}>作品を見る</SafeLink>
+              <SafeLink href={got.author_url}>作者を見る</SafeLink>
+            </div>
+          )}
+          <div className="songs-title display">イメソン</div>
+          <ul className="tracklist">
+            {(got.tracks || []).map((t, i) => <TrackItem key={i} t={t} i={i} />)}
+          </ul>
+          <p className="disclaimer">
+            イメソンは、作者さんが「この子に合う」と感じて選んだものです。楽曲やアーティストさんとは関係がなく、公式に認められたものではありません。曲やアーティストさんを悪く言ったり、ご本人に迷惑がかかるような楽しみ方はしないでね。
+          </p>
+          <div className="react">
+            <p>{stamp ? '作者さんに届けたよ' : '聴いたら、感想をスタンプで'}</p>
+            <div className="stamps">
+              {STAMPS.map(s => (
+                <button key={s.id} className={'stamp' + (stamp === s.id ? ' on' : '')}
+                        disabled={!!stamp} onClick={() => sendStamp(s.id)}>{s.label}</button>
+              ))}
+            </div>
+          </div>
+        </article>
+        <div style={{ marginTop: 16 }}>
+          <button className="btn" onClick={() => setGot(null)}>次のうちの子を探す</button>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <button className="linkish" onClick={() => setConfirm('report')}>通報する</button>
+          <button className="linkish" onClick={() => setConfirm('block')}>この作者さんをブロック</button>
+        </div>
+        {confirm === 'report' && <Confirm title="この投稿を通報する？" body="版権キャラ、成人向け、迷惑な内容などを見つけたときに使ってね。" okLabel="通報する" onOk={report} onCancel={() => setConfirm(null)} />}
+        {confirm === 'block' && <Confirm title="この作者さんをブロックする？" body="相手が誰かはわからないまま、この人の投稿が届かなくなるよ。" okLabel="ブロックする" onOk={block} onCancel={() => setConfirm(null)} />}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <section className="panel hero">
+        <div className="story">
+          <h2 className="display">誰かのうちの子と、その子のイメソンが届く。</h2>
+          <p>ジャンルを選ぶと、どこかの創作者さんの「うちの子」と主題歌が届くよ。あなたのうちの子も流してみてね。</p>
+          <button className="btn ghost" onClick={goCreate}>うちの子を流す</button>
+        </div>
+        <div className="tate" aria-hidden="true">
+          <span className="bubble-tail"></span>
+          <span>うちの子に、主題歌を。</span>
+        </div>
+      </section>
+
+      <div className="sec-head">
+        <h3 className="display">どんな物語が読みたい？</h3>
+        <span className="note">ジャンルを1つ選んでね</span>
+      </div>
+      <div className="genres" role="radiogroup" aria-label="ジャンル">
+        {genres.map(g => (
+          <button key={g.id} className={'genre' + (genre && genre.id === g.id ? ' on' : '')} disabled={busy}
+                  role="radio" aria-checked={!!genre && genre.id === g.id}
+                  onClick={() => { setGenre(cur => (cur && cur.id === g.id) ? null : g); setNone(false); }}>
+            <span>{g.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <details className="more">
+        <summary>もう少し絞る{tags.length > 0 ? `（${tags.length}）` : '（なくてもOK）'}</summary>
+        <div className="inner">
+          {TAG_GROUPS.map(gr => (
+            <div className="tag-group" key={gr.label}>
+              <div className="label">{gr.label}</div>
+              <div className="chips">
+                {gr.tags.map(t => (
+                  <button key={t} className={'chip' + (tags.includes(t) ? ' on' : '')} aria-pressed={tags.includes(t)} onClick={() => toggleTag(t)}>{t}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+          {tags.length > 0 && <button className="linkish" style={{ marginTop: 6 }} onClick={() => setTags([])}>絞り込みを外す</button>}
+        </div>
+      </details>
+
+      {none && (
+        <div className="note-box" style={{ marginTop: 14 }}>
+          この条件のうちの子は、今はもう届けられるものがないみたい。絞り込みを外すか、別のジャンルを選んでみてね。
+        </div>
+      )}
+
+      <div className="receive-bar">
+        <button className="btn" disabled={!genre || busy} onClick={receive}>
+          {busy ? '探してるよ…' : genre ? `「${genre.name}」のうちの子を受け取る` : 'ジャンルを選んでね'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ===== 流す =====
+const emptyTrack = () => ({ url: '', title: '', artist: '', thumbnail: '', service: null, loading: false });
+
+function CreateTab({ user, genres, toast, onCreated, openLogin, guestCanCreate }) {
+  const [kind, setKind] = useState('chara');
+  const [name, setName] = useState('');
+  const [intro, setIntro] = useState('');
+  const [genreId, setGenreId] = useState(null);
+  const [tags, setTags] = useState([]);
+  const [authorName, setAuthorName] = useState('');
+  const [workUrl, setWorkUrl] = useState('');
+  const [authorUrl, setAuthorUrl] = useState('');
+  const [tracks, setTracks] = useState([emptyTrack()]);
+  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  if (!user || (user.is_anonymous && !guestCanCreate)) {
+    return (
+      <div>
+        <h2 className="page display">うちの子を流す</h2>
+        <div className="panel" style={{ padding: 16 }}>
+          <p style={{ marginTop: 0 }}>流すにはログインが必要だよ。メールアドレスかGoogleでOK。</p>
+          <button className="btn" onClick={openLogin}>ログインする</button>
+        </div>
+      </div>
+    );
+  }
+
+  const update = (i, patch) => setTracks(ts => ts.map((t, j) => j === i ? { ...t, ...patch } : t));
+  const onUrlBlur = async (i) => {
+    const t = tracks[i];
+    const service = detectService(t.url);
+    update(i, { service });
+    if (!service || t.title || t.loading) return;
+    update(i, { loading: true });
+    const meta = await fetchMeta(t.url.trim());
+    setTracks(ts => ts.map((x, j) => j !== i ? x : {
+      ...x, loading: false,
+      title: x.title || meta.title || '', artist: x.artist || meta.artist || '', thumbnail: meta.thumbnail || '',
+    }));
+  };
+  const toggleTag = (t) => setTags(ts => ts.includes(t) ? ts.filter(x => x !== t) : (ts.length >= 8 ? ts : [...ts, t]));
+
+  const filled = tracks.filter(t => t.url.trim());
+  const tracksOk = filled.length >= 1 && filled.every(t => detectService(t.url));
+  const linksOk = isHttpsUrl(workUrl) && isHttpsUrl(authorUrl);
+  const canSubmit = name.trim() && genreId && tracksOk && linksOk && agree && !busy;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setBusy(true);
+    try {
+      const p = {
+        kind, name: name.trim(), intro, genre_id: genreId, tags,
+        author_name: authorName, work_url: workUrl.trim(), author_url: authorUrl.trim(),
+        tracks: filled.map(t => ({ url: t.url.trim(), service: detectService(t.url), title: t.title.trim() || null, artist: t.artist.trim() || null, thumbnail: t.thumbnail || null })),
+      };
+      const { error } = await sb.rpc('create_oc_post', { p });
+      if (error) throw error;
+      toast('うちの子を流したよ。誰かに届きますように');
+      setName(''); setIntro(''); setGenreId(null); setTags([]); setTracks([emptyTrack()]); setAgree(false);
+      onCreated();
+    } catch (e) {
+      toast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="page display">うちの子を流す</h2>
+      {user.is_anonymous && (
+        <p className="hint">
+          ゲストのままでも流せるよ。ただ、ゲストで流した投稿はこのブラウザでしか見返せないから、
+          残したいなら<button className="linkish" style={{ padding: 0 }} onClick={openLogin}>ログイン</button>がおすすめ。
+        </p>
+      )}
+
+      <label className="field">なにを流す？</label>
+      <div className="seg" role="radiogroup" aria-label="種類">
+        <button className={kind === 'chara' ? 'on' : ''} role="radio" aria-checked={kind === 'chara'} onClick={() => setKind('chara')}>キャラ</button>
+        <button className={kind === 'work' ? 'on' : ''} role="radio" aria-checked={kind === 'work'} onClick={() => setKind('work')}>作品</button>
+      </div>
+
+      <label className="field" htmlFor="oc-name">{kind === 'chara' ? 'キャラの名前' : '作品のタイトル'}</label>
+      <input id="oc-name" className="input display" style={{ fontSize: 18 }} maxLength={60} value={name} onChange={e => setName(e.target.value)}
+             placeholder={kind === 'chara' ? '例：夜鳴 ヨル' : '例：夜の学校'} />
+
+      <label className="field" htmlFor="oc-intro">ひとこと紹介<span className="opt">任意・200字まで</span></label>
+      <textarea id="oc-intro" className="input genkou-in" maxLength={200} value={intro} onChange={e => setIntro(e.target.value)}
+                placeholder={kind === 'chara' ? 'どんな子？ 好きなもの、抱えているもの、口ぐせなど' : 'どんなお話？ あらすじや見どころなど'} />
+      <p className="hint">{intro.length} / 200</p>
+
+      <label className="field">ジャンル</label>
+      <div className="genres small">
+        {genres.map(g => (
+          <button key={g.id} className={'genre' + (genreId === g.id ? ' on' : '')} aria-pressed={genreId === g.id} onClick={() => setGenreId(g.id)}>
+            <span>{g.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <label className="field">詳細タグ<span className="opt">任意・8つまで</span></label>
+      {TAG_GROUPS.map(gr => (
+        <div className="tag-group" key={gr.label}>
+          <div className="label">{gr.label}</div>
+          <div className="chips">
+            {gr.tags.map(t => (
+              <button key={t} className={'chip' + (tags.includes(t) ? ' on' : '')} aria-pressed={tags.includes(t)} onClick={() => toggleTag(t)}>{t}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <label className="field">イメソン<span className="opt">1〜10曲</span></label>
+      <p className="hint" style={{ marginTop: 0 }}>イメソンは、あなたが「この子に合う」と感じた曲を選ぶもの。曲やアーティストさんの印象を悪くするような使い方はやめてね。</p>
+      {tracks.map((t, i) => {
+        const bad = t.url.trim() && !detectService(t.url);
+        return (
+          <div className="trackrow" key={i}>
+            <div className="num">
+              <span><span className="tno">{i + 1}</span> {t.service && <span className="hint ok">{SERVICES[t.service]}</span>}</span>
+              {tracks.length > 1 && <button className="linkish" onClick={() => setTracks(ts => ts.filter((_, j) => j !== i))}>削除</button>}
+            </div>
+            <input className="input" inputMode="url" placeholder="YouTube / Spotify / Apple Music / Amazon Music のリンク"
+                   value={t.url}
+                   onChange={e => update(i, { url: e.target.value, service: null, title: '', artist: '', thumbnail: '' })}
+                   onBlur={() => onUrlBlur(i)} />
+            <div className="meta-row">
+              {t.thumbnail && <img className="tthumb" src={t.thumbnail} alt="" referrerPolicy="no-referrer" />}
+              <div className="meta-inputs">
+                <input className="input" placeholder={t.loading ? '曲名を探してるよ…' : '曲名（自動で入るよ）'} maxLength={200}
+                       value={t.title} onChange={e => update(i, { title: e.target.value })} />
+                <input className="input" placeholder={t.loading ? 'アーティストを探してるよ…' : 'アーティスト名（自動で入るよ）'} maxLength={200}
+                       value={t.artist} onChange={e => update(i, { artist: e.target.value })} />
+              </div>
+            </div>
+            {bad && <p className="hint err">対応してないリンクみたい。共有ボタンからコピーしたリンクを貼ってね。</p>}
+          </div>
+        );
+      })}
+      {tracks.length < 10 && <button className="btn ghost" onClick={() => setTracks(ts => [...ts, emptyTrack()])}>＋ 曲を追加</button>}
+
+      <label className="field" htmlFor="oc-author">作者名<span className="opt">任意</span></label>
+      <input id="oc-author" className="input" maxLength={40} value={authorName} onChange={e => setAuthorName(e.target.value)} placeholder="ペンネーム" />
+
+      <label className="field" htmlFor="oc-work">作品リンク<span className="opt">任意</span></label>
+      <input id="oc-work" className="input" inputMode="url" value={workUrl} onChange={e => setWorkUrl(e.target.value)} placeholder="https://（pixiv、漫画・小説のページ、キャラ紹介など）" />
+      {!isHttpsUrl(workUrl) && <p className="hint err">https:// から始まるリンクを入れてね</p>}
+
+      <label className="field" htmlFor="oc-author-url">作者リンク<span className="opt">任意</span></label>
+      <input id="oc-author-url" className="input" inputMode="url" value={authorUrl} onChange={e => setAuthorUrl(e.target.value)} placeholder="https://（X、pixivのプロフィールなど）" />
+      {!isHttpsUrl(authorUrl) && <p className="hint err">https:// から始まるリンクを入れてね</p>}
+
+      <label className="field" style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontWeight: 400 }}>
+        <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} style={{ marginTop: 6 }} />
+        <span>自分のオリジナルのキャラ・作品です（版権キャラ・二次創作・成人向けは流せません）。曲やアーティストさんをおとしめる目的では使いません</span>
+      </label>
+
+      <div style={{ marginTop: 16 }}>
+        <button className="btn" disabled={!canSubmit} onClick={submit}>{busy ? '流しています…' : 'このうちの子を流す'}</button>
+        {!name.trim() && <p className="hint">名前を入れてね</p>}
+        {name.trim() && !genreId && <p className="hint">ジャンルを選んでね</p>}
+        {name.trim() && genreId && !tracksOk && <p className="hint">イメソンを1曲以上入れてね</p>}
+        {name.trim() && genreId && tracksOk && !agree && <p className="hint">最後のチェックを入れてね</p>}
+      </div>
+    </div>
+  );
+}
+
+// ===== じぶん =====
+function MeTab({ user, toast, reloadKey, openLogin, openRules }) {
+  const [list, setList] = useState(null);
+  const [tracksBy, setTracksBy] = useState({});
+  const [open, setOpen] = useState({});
+  const [del, setDel] = useState(null);
+  const [bye, setBye] = useState(false);
+  const guest = !user || user.is_anonymous;
+
+  const load = useCallback(async () => {
+    if (!user) { setList([]); return; }
+    const { data, error } = await sb.rpc('my_oc_posts');
+    if (error) { toast(errMsg(error)); setList([]); return; }
+    setList(data || []);
+    const ids = (data || []).map(p => p.post_id);
+    if (!ids.length) { setTracksBy({}); return; }
+    const res = await sb.from('oc_tracks').select('post_id,url,service,title,artist,thumbnail,position').in('post_id', ids).order('position');
+    if (res.error) return;
+    const by = {};
+    for (const t of res.data) (by[t.post_id] = by[t.post_id] || []).push(t);
+    setTracksBy(by);
+  }, [user && user.id]);
+
+  useEffect(() => { load(); }, [load, reloadKey]);
+
+  const remove = async () => {
+    const id = del; setDel(null);
+    const { error } = await sb.from('oc_posts').delete().eq('id', id);
+    if (error) return toast(errMsg(error));
+    toast('削除したよ');
+    load();
+  };
+
+  const deleteAccount = async () => {
+    setBye(false);
+    const { error } = await sb.rpc('delete_my_account');
+    if (error) return toast(errMsg(error));
+    await sb.auth.signOut();
+    toast('アカウントを削除したよ。今までありがとう');
+  };
+
+  return (
+    <div>
+      <h2 className="page display">じぶん</h2>
+      <div className="panel" style={{ padding: 14 }}>
+        {guest ? (
+          <div>
+            <p style={{ marginTop: 0 }}>今はゲストで使ってるよ。ログインすると、流したうちの子をどの端末でも見返せる。</p>
+            <button className="btn" onClick={openLogin}>ログインする</button>
+          </div>
+        ) : (
+          <div className="mine-head">
+            <span style={{ wordBreak: 'break-all' }}>{user.email}</span>
+            <button className="btn ghost small" onClick={() => sb.auth.signOut()}>ログアウト</button>
+          </div>
+        )}
+      </div>
+
+      {(!guest || (list && list.length > 0)) && (
+        <>
+          <div className="sec-head"><h3 className="display">流したうちの子</h3></div>
+          {guest && <p className="hint">ゲストで流した投稿は、このブラウザを使い続けている間だけ見られるよ。</p>}
+          {list === null && <div className="loading" style={{ padding: 20 }}>読み込み中…</div>}
+          {list && list.length === 0 && <div className="panel empty">まだないよ。「流す」からうちの子を紹介してみよう。</div>}
+          {list && list.map(p => (
+            <div className="panel mine" key={p.post_id}>
+              <div className="mine-head">
+                <span className="chip static">{KIND_LABEL[p.kind]}・{p.genre}</span>
+                <button className="linkish" onClick={() => setDel(p.post_id)}>削除</button>
+              </div>
+              <div className="name display">{p.name}</div>
+              <div className="hint">{p.deliveries}人に届いた</div>
+              <div className="counts">
+                {STAMPS.filter(s => p.stamps && p.stamps[s.id]).map(s => (
+                  <span className="count" key={s.id}>{s.label}<b>{p.stamps[s.id]}</b></span>
+                ))}
+                {(!p.stamps || Object.keys(p.stamps).length === 0) && <span className="hint">まだスタンプはないよ</span>}
+              </div>
+              {tracksBy[p.post_id] && (
+                <>
+                  <button className="toggle" aria-expanded={!!open[p.post_id]} onClick={() => setOpen(o => ({ ...o, [p.post_id]: !o[p.post_id] }))}>
+                    {open[p.post_id] ? 'イメソンを閉じる' : `イメソンを見る（${tracksBy[p.post_id].length}曲）`}
+                  </button>
+                  {open[p.post_id] && <ul className="tracklist" style={{ padding: 0 }}>{tracksBy[p.post_id].map((t, i) => <TrackItem key={i} t={t} i={i} />)}</ul>}
+                </>
+              )}
+            </div>
+          ))}
+        </>
+      )}
+
+      {!guest && (
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          <button className="linkish" style={{ color: 'var(--shu)' }} onClick={() => setBye(true)}>アカウントを削除する</button>
+        </div>
+      )}
+
+      <a className="sister" href={OTODOKEBIN_URL}>
+        姉妹サイト <b>音届便</b>：気分を選ぶと、誰かのセトリが届く
+      </a>
+      <footer className="foot">
+        <button className="linkish" onClick={openRules}>利用のきまり</button>
+        <a className="linkish" href={OTODOKEBIN_URL + 'privacy.html'}>プライバシーポリシー</a>
+      </footer>
+
+      {del && <Confirm title="この投稿を削除する？" body="届いたスタンプも一緒に消えて、元に戻せないよ。" okLabel="削除する" onOk={remove} onCancel={() => setDel(null)} />}
+      {bye && <Confirm title="アカウントを削除する？" body="うちの子イメソン便と音届便の両方で、投稿・スタンプ・受け取った記録がすべて消えて、元に戻せないよ。" okLabel="削除する" onOk={deleteAccount} onCancel={() => setBye(false)} />}
+    </div>
+  );
+}
+
+function Rules({ onClose }) {
+  return (
+    <Sheet onClose={onClose}>
+      <h3>利用のきまり</h3>
+      <ul>
+        <li>流せるのは、自分のオリジナルのキャラ・作品だけ。版権キャラ・二次創作は流せません</li>
+        <li>成人向けの内容、過激な暴力表現の紹介文やリンクは禁止</li>
+        <li>悪口、誹謗中傷、差別的な内容は禁止</li>
+        <li>曲は公式サービスのリンクだけを載せてね（違法アップロードのリンクは禁止）</li>
+        <li>イメソンは、作者さんが自分の解釈で選んだもの。楽曲・アーティストさんとは関係がなく、公式なものではありません</li>
+        <li>曲やアーティストさんをおとしめる目的で使ったり、アーティストさんご本人やその公式の場所（SNSのリプライ・コメント欄など）に投稿を送りつけたりしないでね</li>
+        <li>作品・作者リンクは、自分のページだけにしてね</li>
+        <li>きまりに反する投稿は、運営が予告なく非表示・削除することがあります</li>
+      </ul>
+      <button className="btn ghost" onClick={onClose}>閉じる</button>
+    </Sheet>
+  );
+}
+
+// ===== 全体 =====
+function App() {
+  const [user, setUser] = useState(undefined);
+  const [genres, setGenres] = useState([]);
+  const [guestCanCreate, setGuestCanCreate] = useState(false);
+  const [tab, setTab] = useState('receive');
+  const [toastText, setToastText] = useState('');
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [fatal, setFatal] = useState('');
+
+  const toast = useCallback((t) => {
+    setToastText(t);
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => setToastText(''), 3200);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const ensureUser = async () => {
+      const { data } = await sb.auth.getSession();
+      if (data.session) { if (alive) setUser(data.session.user); return; }
+      const res = await sb.auth.signInAnonymously();
+      if (res.error) { if (alive) { setFatal('ゲストで始められなかった…（' + res.error.message + '）'); setUser(null); } return; }
+      if (alive) setUser(res.data.user);
+    };
+    ensureUser();
+    const { data: sub } = sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') { ensureUser(); return; }
+      if (session) setUser(session.user);
+      if (event === 'SIGNED_IN' && session && !session.user.is_anonymous) setLoginOpen(false);
+    });
+    sb.from('app_settings').select('guest_can_create').eq('id', 1).maybeSingle().then(({ data }) => {
+      setGuestCanCreate(!!(data && data.guest_can_create));
+    });
+    sb.from('oc_genres').select('id,name').order('sort_order').then(({ data, error }) => {
+      if (error) setFatal('ジャンルを読み込めなかった…（' + error.message + '）');
+      else setGenres(data || []);
+    });
+    return () => { alive = false; sub.subscription.unsubscribe(); };
+  }, []);
+
+  if (user === undefined) return <div className="loading">読み込み中…</div>;
+  const guest = !user || user.is_anonymous;
+
+  return (
+    <div className="app">
+      <header className="top">
+        <div className="logo">
+          <h1 className="display">うちの子イメソン便</h1>
+          <span className="sub">うちの子に、主題歌を。</span>
+        </div>
+        <button className="who" onClick={() => guest ? setLoginOpen(true) : setTab('me')}>{guest ? 'ゲスト・ログイン' : 'ログイン中'}</button>
+      </header>
+
+      {fatal && <div className="note-box" style={{ marginTop: 14, borderColor: 'var(--shu)', color: 'var(--shu)' }}>{fatal}</div>}
+
+      {tab === 'receive' && <ReceiveTab genres={genres} toast={toast} goCreate={() => setTab('create')} />}
+      {tab === 'create' && <CreateTab user={user} genres={genres} toast={toast} guestCanCreate={guestCanCreate}
+                                      openLogin={() => setLoginOpen(true)}
+                                      onCreated={() => { setReloadKey(k => k + 1); setTab('me'); }} />}
+      {tab === 'me' && <MeTab user={user} toast={toast} reloadKey={reloadKey}
+                              openLogin={() => setLoginOpen(true)} openRules={() => setRulesOpen(true)} />}
+
+      <nav className="tabs" aria-label="メニュー">
+        <div className="inner">
+          <button className={tab === 'receive' ? 'on' : ''} onClick={() => setTab('receive')}>
+            <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5z"/><path d="M12 6v13.5"/></svg>
+            <span className="lb">受け取る</span>
+          </button>
+          <button className={tab === 'create' ? 'on' : ''} onClick={() => setTab('create')}>
+            <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 4.5l4 4L9 19l-5 1 1-5z"/><path d="M13.5 6.5l4 4"/></svg>
+            <span className="lb">流す</span>
+          </button>
+          <button className={tab === 'me' ? 'on' : ''} onClick={() => setTab('me')}>
+            <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>
+            <span className="lb">じぶん</span>
+          </button>
+        </div>
+      </nav>
+
+      {loginOpen && (
+        <Sheet onClose={() => setLoginOpen(false)}>
+          <h3>ログイン</h3>
+          <p>音届便と同じアカウントで入れるよ。</p>
+          <LoginForm user={user} toast={toast} />
+        </Sheet>
+      )}
+      {rulesOpen && <Rules onClose={() => setRulesOpen(false)} />}
+      <Toast text={toastText} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
