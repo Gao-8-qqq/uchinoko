@@ -269,12 +269,11 @@
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useCallback } = React;
 
-// ===== 設定（音届便と同じSupabase） =====
+// ===== 設定 =====
 const SUPABASE_URL = 'https://xqnhxjepxzglmsnmdrvm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_FRoeyOoJFYtM7QsQ8cjuqw_2yqFF7bj';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const REDIRECT_TO = location.origin + location.pathname;
-const OTODOKEBIN_URL = 'https://otodokebin.com/';
 
 const STAMPS = [
   { id: 'sasatta',  label: '刺さった' },
@@ -431,7 +430,7 @@ function LoginForm({ user, toast }) {
       <form onSubmit={submit}>
         <input className="input" type="email" autoComplete="email" value={email} aria-label="メールアドレス"
                onChange={e => setEmail(e.target.value)} placeholder="you@example.com" />
-        <p className="hint">パスワードはいらないよ。届いたリンクを開くだけ。音届便と同じアカウントが使えるよ。</p>
+        <p className="hint">パスワードはいらないよ。届いたリンクを開くだけ。</p>
         <button className="btn ghost" disabled={busy} style={{ marginTop: 10 }}>{busy ? '送信中…' : 'ログインリンクを送る'}</button>
       </form>
     </div>
@@ -884,16 +883,13 @@ function MeTab({ user, toast, reloadKey, openLogin, openRules }) {
         </div>
       )}
 
-      <a className="sister" href={OTODOKEBIN_URL}>
-        姉妹サイト <b>音届便</b>：気分を選ぶと、誰かのセトリが届く
-      </a>
       <footer className="foot">
         <button className="linkish" onClick={openRules}>利用のきまり</button>
-        <a className="linkish" href={OTODOKEBIN_URL + 'privacy.html'}>プライバシーポリシー</a>
+        <a className="linkish" href="./privacy.html">プライバシーポリシー</a>
       </footer>
 
       {del && <Confirm title="この投稿を削除する？" body="届いたスタンプも一緒に消えて、元に戻せないよ。" okLabel="削除する" onOk={remove} onCancel={() => setDel(null)} />}
-      {bye && <Confirm title="アカウントを削除する？" body="うちの子イメソン便と音届便の両方で、投稿・スタンプ・受け取った記録がすべて消えて、元に戻せないよ。" okLabel="削除する" onOk={deleteAccount} onCancel={() => setBye(false)} />}
+      {bye && <Confirm title="アカウントを削除する？" body="投稿・スタンプ・受け取った記録がすべて消えて、元に戻せないよ。" okLabel="削除する" onOk={deleteAccount} onCancel={() => setBye(false)} />}
     </div>
   );
 }
@@ -1007,7 +1003,6 @@ function App() {
       {loginOpen && (
         <Sheet onClose={() => setLoginOpen(false)}>
           <h3>ログイン</h3>
-          <p>音届便と同じアカウントで入れるよ。</p>
           <LoginForm user={user} toast={toast} />
         </Sheet>
       )}
