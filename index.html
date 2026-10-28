@@ -230,6 +230,11 @@
   .counts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .count { font-size: 12px; border: 1.5px solid var(--ink); padding: 1px 8px; }
   .count b { color: var(--shu); margin-left: 4px; }
+  .mine-detail { margin-top: 12px; border-top: 2px dashed var(--ink); padding-top: 10px; }
+  .mine-detail .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .mine-detail .label { font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 4px; }
+  .genkou.mini { border: 1.5px solid var(--ink); padding: 6px 10px; background-position: 0 6px; }
+  .credit.mini { border: 0; padding: 0; }
   .toggle { background: none; border: 2px solid var(--ink); padding: 3px 12px; font-size: 13px; cursor: pointer; margin-top: 10px; font-weight: 600; }
   .empty { text-align: center; color: var(--muted); padding: 26px 14px; }
   .note-box { border: 2px dashed var(--ink); padding: 12px 14px; font-size: 14px; }
@@ -844,13 +849,29 @@ function MeTab({ user, toast, reloadKey, openLogin, openRules }) {
                 ))}
                 {(!p.stamps || Object.keys(p.stamps).length === 0) && <span className="hint">まだスタンプはないよ</span>}
               </div>
-              {tracksBy[p.post_id] && (
-                <>
-                  <button className="toggle" aria-expanded={!!open[p.post_id]} onClick={() => setOpen(o => ({ ...o, [p.post_id]: !o[p.post_id] }))}>
-                    {open[p.post_id] ? 'イメソンを閉じる' : `イメソンを見る（${tracksBy[p.post_id].length}曲）`}
-                  </button>
-                  {open[p.post_id] && <ul className="tracklist" style={{ padding: 0 }}>{tracksBy[p.post_id].map((t, i) => <TrackItem key={i} t={t} i={i} />)}</ul>}
-                </>
+              <button className="toggle" aria-expanded={!!open[p.post_id]} onClick={() => setOpen(o => ({ ...o, [p.post_id]: !o[p.post_id] }))}>
+                {open[p.post_id] ? '閉じる' : '流した内容を見る'}
+              </button>
+              {open[p.post_id] && (
+                <div className="mine-detail">
+                  {p.tags && p.tags.length > 0 && (
+                    <div className="meta">{p.tags.map(t => <span key={t} className="chip static">{t}</span>)}</div>
+                  )}
+                  <div className="label">ひとこと紹介</div>
+                  {p.intro ? <p className="genkou mini">{p.intro}</p> : <p className="hint">（なし）</p>}
+                  <div className="label">作者</div>
+                  <div className="credit mini">
+                    <span className="by">{p.author_name ? '作・' + p.author_name : '（作者名なし）'}</span>
+                    <SafeLink href={p.work_url}>作品を見る</SafeLink>
+                    <SafeLink href={p.author_url}>作者を見る</SafeLink>
+                  </div>
+                  {!p.work_url && !p.author_url && <p className="hint">リンクはなし</p>}
+                  <div className="label">イメソン{tracksBy[p.post_id] ? `（${tracksBy[p.post_id].length}曲）` : ''}</div>
+                  {tracksBy[p.post_id]
+                    ? <ul className="tracklist" style={{ padding: 0 }}>{tracksBy[p.post_id].map((t, i) => <TrackItem key={i} t={t} i={i} />)}</ul>
+                    : <p className="hint">読み込み中…</p>}
+                  <p className="hint">流した日：{new Date(p.created_at).toLocaleDateString('ja-JP')}</p>
+                </div>
               )}
             </div>
           ))}
