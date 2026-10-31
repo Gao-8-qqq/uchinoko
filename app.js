@@ -447,7 +447,12 @@ function ReceiveTab({
     }, React.createElement("button", {
       className: "btn",
       onClick: () => setGot(null)
-    }, "次のうちの子を探す")), React.createElement("div", {
+    }, "次のうちの子を探す"), React.createElement("p", {
+      className: "hint",
+      style: {
+        textAlign: 'center'
+      }
+    }, "受け取ったうちの子は、「じぶん」にたまっていくよ。")), React.createElement("div", {
       style: {
         textAlign: 'center',
         marginTop: 10
@@ -885,7 +890,23 @@ function MeTab({
   const [open, setOpen] = useState({});
   const [del, setDel] = useState(null);
   const [bye, setBye] = useState(false);
+  const [recv, setRecv] = useState(null);
+  const [ropen, setRopen] = useState({});
   const guest = !user || user.is_anonymous;
+  const loadRecv = useCallback(async () => {
+    if (!user) {
+      setRecv([]);
+      return;
+    }
+    const {
+      data,
+      error
+    } = await sb.rpc('my_received_oc_posts');
+    setRecv(error ? [] : data || []);
+  }, [user && user.id]);
+  useEffect(() => {
+    loadRecv();
+  }, [loadRecv]);
   const load = useCallback(async () => {
     if (!user) {
       setList([]);
@@ -945,7 +966,7 @@ function MeTab({
     style: {
       marginTop: 0
     }
-  }, "今はゲストで使ってるよ。ログインすると、流したうちの子をどの端末でも見返せる。"), React.createElement("button", {
+  }, "今はゲストで使ってるよ。ログインすると、流したうちの子・受け取ったうちの子をどの端末でも見返せる。"), React.createElement("button", {
     className: "btn",
     onClick: openLogin
   }, "ログインする")) : React.createElement("div", {
@@ -957,7 +978,67 @@ function MeTab({
   }, user.email), React.createElement("button", {
     className: "btn ghost small",
     onClick: () => sb.auth.signOut()
-  }, "ログアウト"))), (!guest || list && list.length > 0) && React.createElement(React.Fragment, null, React.createElement("div", {
+  }, "ログアウト"))), recv && recv.length > 0 && React.createElement(React.Fragment, null, React.createElement("div", {
+    className: "sec-head"
+  }, React.createElement("h3", {
+    className: "display"
+  }, "受け取ったうちの子"), React.createElement("span", {
+    className: "note"
+  }, recv.length, "人")), guest && React.createElement("p", {
+    className: "hint"
+  }, "ゲストで受け取った分は、このブラウザを使い続けている間だけ見られるよ。"), recv.map(r => React.createElement("div", {
+    className: "panel mine",
+    key: r.delivery_id
+  }, React.createElement("div", {
+    className: "mine-head"
+  }, React.createElement("span", {
+    className: "chip static"
+  }, KIND_LABEL[r.kind], "・", r.genre)), React.createElement("div", {
+    className: "name display"
+  }, r.name), React.createElement("div", {
+    className: "hint"
+  }, new Date(r.delivered_at).toLocaleDateString('ja-JP'), "に届いた"), React.createElement("button", {
+    className: "toggle",
+    "aria-expanded": !!ropen[r.delivery_id],
+    onClick: () => setRopen(o => ({
+      ...o,
+      [r.delivery_id]: !o[r.delivery_id]
+    }))
+  }, ropen[r.delivery_id] ? '閉じる' : 'もう一度見る'), ropen[r.delivery_id] && React.createElement("div", {
+    className: "mine-detail"
+  }, r.tags && r.tags.length > 0 && React.createElement("div", {
+    className: "meta"
+  }, r.tags.map(t => React.createElement("span", {
+    key: t,
+    className: "chip static"
+  }, t))), React.createElement("div", {
+    className: "label"
+  }, "ひとこと紹介"), r.intro ? React.createElement("p", {
+    className: "genkou mini"
+  }, r.intro) : React.createElement("p", {
+    className: "hint"
+  }, "（なし）"), React.createElement("div", {
+    className: "label"
+  }, "作者"), React.createElement("div", {
+    className: "credit mini"
+  }, React.createElement("span", {
+    className: "by"
+  }, r.author_name ? '作・' + r.author_name : '（作者名なし）'), React.createElement(SafeLink, {
+    href: r.work_url
+  }, "作品を見る"), React.createElement(SafeLink, {
+    href: r.author_url
+  }, "作者を見る")), React.createElement("div", {
+    className: "label"
+  }, "イメソン", r.tracks ? `（${r.tracks.length}曲）` : ''), React.createElement("ul", {
+    className: "tracklist",
+    style: {
+      padding: 0
+    }
+  }, (r.tracks || []).map((t, i) => React.createElement(TrackItem, {
+    key: i,
+    t: t,
+    i: i
+  }))))))), (!guest || list && list.length > 0) && React.createElement(React.Fragment, null, React.createElement("div", {
     className: "sec-head"
   }, React.createElement("h3", {
     className: "display"
